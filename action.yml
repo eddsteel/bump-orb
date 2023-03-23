@@ -1,0 +1,19 @@
+name: Bump Orbs
+description: Update the supplied Circle CI to use the latest version of its orbs
+inputs:
+  config:
+    description: Relative path to Circle CI configuration file
+    required: false
+    default: .circleci/config.yml
+  token:
+    description: Circle CI token (required if private orbs are involved)
+    required: false
+outputs:
+  log:
+    description: Output of update process
+runs:
+  using: docker
+  image: Dockerfile
+  args:
+    - ${{ inputs.config }}
+    - ${{ inputs.token }}
