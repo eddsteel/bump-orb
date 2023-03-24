@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # CIRCLECI_CLI_TOKEN is required for the orb refresh to find private orbs.
 # CIRCLECI_CONFIG_FILE is required to specify the configuration file to use.
 
