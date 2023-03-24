@@ -19,12 +19,12 @@ for ns in $NAMESPACES; do
     circleci --skip-update-check orb list $ns --uncertified | sed -n 's/ (\([^)]*\))$/@\1/gp' \
         | grep -v "Not published" >> $ORBS
     if [ -z "$CIRCLECI_CLI_TOKEN" ]; then
-        echo "$ns: CIRCLECI_CLI_TOKEN must be set to retrieve private orbs" >>$GITHUB_OUTPUT
+        echo "$ns: CIRCLECI_CLI_TOKEN must be set to retrieve private orbs"
         break
     else
         circleci --skip-update-check orb list --uncertified --private "$ns" 2>/dev/null \
             | sed -n 's/ (\([^)]*\))$/@\1/gp' | grep -v "Not published" >> $ORBS || \
-            echo "Failed to retrieve private orbs for $ns" >>$GITHUB_OUTPUT
+            echo "Failed to retrieve private orbs for $ns"
     fi
 done
 
@@ -44,11 +44,21 @@ sed -n "${STANZA}{/^  *[^:]*: *[^ ]\+@[^ ]\+/p}" "$CONFIG" \
     if [ -n "$latest" ]; then
         if [ "$version" != "$latest" ]; then
             sed -i "${STANZA}s!${orb}@${version}!${orb}@${latest}!g" "$CONFIG"
-            echo "bumped $orb to $latest" >>$GITHUB_OUTPUT
+            echo "- bumped \`$orb\` to $latest (was $version)" >> out-updates
         else
-            echo "$orb is already at $latest" >>$GITHUB_OUTPUT
+            echo "- \`$orb\` is already at $latest" >> out-latest
         fi
     fi
 done
 
+
+echo "### Updates" >> $GITHUB_STEP_SUMMARY
+cat out-updates >> $GITHUB_STEP_SUMMARY
+echo "### Already up to date" >> $GITHUB_STEP_SUMMARY
+cat out-latest >> $GITHUB_STEP_SUMMARY
+
+echo "summary=$(cat out-updates)" >> $GITHUB_OUTPUT
+
 rm -fr "$ORBS"
+rm -fr out-latest
+rm -fr out-updates

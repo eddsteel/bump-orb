@@ -9,8 +9,8 @@ inputs:
     description: Circle CI token (required if private orbs are involved)
     required: false
 outputs:
-  log:
-    description: Output of update process
+  summary:
+    description: List of updates in markdown format
 runs:
   using: docker
   image: Dockerfile
