@@ -3,6 +3,7 @@
 # CIRCLECI_CONFIG_FILE is required to specify the configuration file to use.
 
 GITHUB_OUTPUT=${GITHUB_OUTPUT-output}
+GITHUB_STEP_SUMMARY=${GITHUB_STEP_SUMMARY-steps.md}
 ORBS="./orbs"
 STANZA='/^orbs:/,/^[^ ][^ ]/' # stanza to match initial orbs section of the config
 
@@ -11,6 +12,12 @@ trap "rm -fr ${ORBS}" 1 2 3 6
 CONFIG="$1"
 if [ "$#" -gt 1 ]; then
     export CIRCLECI_CLI_TOKEN="$2"
+fi
+
+if ! grep -q '^orbs:' "$CONFIG"; then
+    echo "Orbs are not used." >> $GITHUB_STEP_SUMMARY
+    echo "summary=Orbs are not used." >> $GITHUB_OUTPUT
+    exit 0
 fi
 
 NAMESPACES="$(sed -n "${STANZA}s!/!&!p" "$CONFIG" | cut -f2 -d: | cut -f1 -d/ | sort -u)"
@@ -52,12 +59,21 @@ sed -n "${STANZA}{/^  *[^:]*: *[^ ]\+@[^ ]\+/p}" "$CONFIG" \
 done
 
 
-echo "### Updates" >> $GITHUB_STEP_SUMMARY
-cat out-updates >> $GITHUB_STEP_SUMMARY
-echo "### Already up to date" >> $GITHUB_STEP_SUMMARY
-cat out-latest >> $GITHUB_STEP_SUMMARY
+if [ -s out-updates ]; then
+    echo "### Updates" >> $GITHUB_STEP_SUMMARY
+    cat out-updates >> $GITHUB_STEP_SUMMARY
+fi
 
-echo "summary=$(cat out-updates)" >> $GITHUB_OUTPUT
+if [ -s out-latest ]; then
+    echo "### Already up to date" >> $GITHUB_STEP_SUMMARY
+    cat out-latest >> $GITHUB_STEP_SUMMARY
+fi
+
+if [ -s out-updates ]; then
+    echo "summary=$(cat out-updates)" >> $GITHUB_OUTPUT
+else
+    echo "summary=No changes." >> $GITHUB_OUTPUT
+fi
 
 rm -fr "$ORBS"
 rm -fr out-latest
