@@ -41,8 +41,11 @@ jobs:
     - name: Create PR
       uses: peter-evans/create-pull-request@v4
       with:
-        commit-message: "Bump CircleCI orbs"
         add-paths: ".circleci/*"
+        branch: bump-orbs
+        commit-message: "Bump CircleCI orbs"
         title: "Bump CircleCI orbs"
         body: "${{ steps.borb.outputs.summary }}"
+        labels: |
+          dependencies
 ```
