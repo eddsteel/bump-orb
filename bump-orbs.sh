@@ -70,11 +70,10 @@ if [ -s out-latest ]; then
 fi
 
 if [ -s out-updates ]; then
-    output=$(cat out-updates)
-    output="${output//'%'/'%25'}"
-    output="${output//$'\n'/'%0A'}"
-    output="${output//$'\r'/'%0D'}"
-    echo "summary=${output}" >> $GITHUB_OUTPUT
+    EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+    echo "summary<<$EOF" >> $GITHUB_OUTPUT
+    cat out-updates >> $GITHUB_OUTPUT
+    echo "$EOF" >> $GITHUB_OUTPUT
 else
     echo "summary=No changes." >> $GITHUB_OUTPUT
 fi
