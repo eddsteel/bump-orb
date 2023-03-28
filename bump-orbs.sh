@@ -70,7 +70,11 @@ if [ -s out-latest ]; then
 fi
 
 if [ -s out-updates ]; then
-    echo "summary=$(cat out-updates)" >> $GITHUB_OUTPUT
+    output=$(cat out-updates)
+    output="${output//'%'/'%25'}"
+    output="${output//$'\n'/'%0A'}"
+    output="${output//$'\r'/'%0D'}"
+    echo "summary=${output}" >> $GITHUB_OUTPUT
 else
     echo "summary=No changes." >> $GITHUB_OUTPUT
 fi
