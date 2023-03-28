@@ -1,6 +1,6 @@
 # Bump orbs action
 
-This action checks for updates to the orbs used in the given Circle CI configuration file. It may use a token to also check for updates to private orbs if provided. This is powered by the `circleci orbs list <namespace>` command, whose output is parsed and compared with the current defined versions.
+This action checks for updates to the orbs used in the given Circle CI configuration file. It may use a token to also check for updates to private orbs if provided. This is powered by the `circleci orbs list <namespace>` command, whose output is parsed and compared with the current defined versions. If a version has a non-production version specified (with the `<orb name>@dev:<commit>` syntax) it will be skipped.
 
 ## Inputs
 

@@ -41,7 +41,7 @@ if [ ! -f "$ORBS" ]; then
     exit 1
 fi
 
-sed -n "${STANZA}{/^  *[^:]*: *[^ ]\+@[^ ]\+/p}" "$CONFIG" \
+sed -n "${STANZA}{/^  *[^:]*: *[^ ]\+@[^ :]\+$/p}" "$CONFIG" \
     | cut -f 2 -d ':' \
     | while read line; do
     orb=$(echo $line | cut -f 1 -d'@')
