@@ -17,3 +17,6 @@ runs:
   args:
     - ${{ inputs.config }}
     - ${{ inputs.token }}
+branding:
+  icon: circle
+  color: green
