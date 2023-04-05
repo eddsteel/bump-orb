@@ -1,5 +1,6 @@
 name: Bump Orbs
-description: Update the supplied Circle CI to use the latest version of its orbs
+author: "Edd Steel <edd@eddsteel.com>"
+description: "Update the supplied Circle CI configuration to use the latest version of its orbs."
 inputs:
   config:
     description: Relative path to Circle CI configuration file
