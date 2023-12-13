@@ -9,6 +9,9 @@ inputs:
   token:
     description: Circle CI token (required if private orbs are involved)
     required: false
+  ignore:
+    description: A newline separated list of orbs to ignore updates for
+    required: false
 outputs:
   summary:
     description: List of updates in markdown format
@@ -16,8 +19,9 @@ runs:
   using: docker
   image: Dockerfile
   args:
-    - ${{ inputs.config }}
-    - ${{ inputs.token }}
+    - '${{ inputs.config }}'
+    - '${{ inputs.token }}'
+    - '${{ inputs.ignore }}'
 branding:
   icon: circle
   color: green

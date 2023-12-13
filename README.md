@@ -12,6 +12,19 @@ The filename to check, relative to the root of the workspace. By default this is
 
 The token used for authentication when running `circleci orbs list --private`. If provided, private orbs are checked for all namespaces, even though the token is probably only going to provide access to one of them.
 
+### `ignore`
+
+A newline separated list of orbs to ignore updates for.
+
+e.g.
+```yml
+      uses: eddsteel/bump-orb@v1
+      with:
+        ignore: |
+          eddsteel/ignore-this-orb
+          eddsteel/ignore-this-one-too
+```
+
 ## Outputs
 
 ### `summary`

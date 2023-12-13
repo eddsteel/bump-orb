@@ -14,6 +14,11 @@ if [ "$#" -gt 1 ]; then
     export CIRCLECI_CLI_TOKEN="$2"
 fi
 
+IGNORED_ORBS=""
+if [ "$#" -gt 2 ]; then
+    IGNORED_ORBS="$3"
+fi
+
 if ! grep -q '^orbs:' "$CONFIG"; then
     echo "Orbs are not used." >> $GITHUB_STEP_SUMMARY
     echo "summary=Orbs are not used." >> $GITHUB_OUTPUT
@@ -34,6 +39,12 @@ for ns in $NAMESPACES; do
             echo "Failed to retrieve private orbs for $ns"
     fi
 done
+
+if [ -n "$IGNORED_ORBS" ]; then
+    for orb in $IGNORED_ORBS; do
+        sed -i "\#^$orb@#d" "$ORBS"
+    done
+fi
 
 if [ ! -f "$ORBS" ]; then
     echo "Failed to retrieve any latest versions"

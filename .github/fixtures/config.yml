@@ -1,0 +1,5 @@
+orbs:
+  aws-ecr: circleci/aws-ecr@x.y.z
+  aws-cli: circleci/aws-cli@x.y.z
+  node: circleci/node@x.y.z
+  slack: circleci/slack@x.y.z
