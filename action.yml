@@ -19,9 +19,9 @@ runs:
   using: docker
   image: Dockerfile
   args:
-    - ${{ inputs.config }}
-    - ${{ inputs.token }}
-    - ${{ inputs.ignore }}
+    - '${{ inputs.config }}'
+    - '${{ inputs.token }}'
+    - '${{ inputs.ignore }}'
 branding:
   icon: circle
   color: green
