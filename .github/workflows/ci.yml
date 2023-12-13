@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test bump-orb
+        uses: ./
+        with:
+          config: .github/fixtures/config.yml
+          ignore: |
+            circleci/aws-ecr
+            circleci/node
+
+      - name: Check test
+        run: |
+          if ! grep -q "circleci/aws-ecr@x.y.z" ".github/fixtures/config.yml"; then
+              exit 1
+          fi
+          if grep -q "circleci/aws-cli@x.y.z" ".github/fixtures/config.yml"; then
+              exit 1
+          fi
+          if ! grep -q "circleci/node@x.y.z" ".github/fixtures/config.yml"; then
+              exit 1
+          fi
+          if grep -q "circleci/slack@x.y.z" ".github/fixtures/config.yml"; then
+              exit 1
+          fi

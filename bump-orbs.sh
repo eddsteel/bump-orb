@@ -42,7 +42,7 @@ done
 
 if [ -n "$IGNORED_ORBS" ]; then
     for orb in $IGNORED_ORBS; do
-        sed -i "/$orb@.*/d" "$ORBS"
+        sed -i "\#^$orb@#d" "$ORBS"
     done
 fi
 
