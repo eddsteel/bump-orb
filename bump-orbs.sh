@@ -60,11 +60,12 @@ sed -n "${STANZA}{/^  *[^:]*: *[^ ]\+@[^ :]\+$/p}" "$CONFIG" \
     latest=$(grep "$orb" "$ORBS" | cut -f 2 -d'@')
 
     if [ -n "$latest" ]; then
+        orb_link="[\`${orb}\`](https://circleci.com/developer/orbs/orb/${orb})"
         if [ "$version" != "$latest" ]; then
             sed -i "${STANZA}s!${orb}@${version}!${orb}@${latest}!g" "$CONFIG"
-            echo "- bumped \`$orb\` to $latest (was $version)" >> out-updates
+            echo "- bumped $orb_link to $latest (was $version)" >> out-updates
         else
-            echo "- \`$orb\` is already at $latest" >> out-latest
+            echo "- $orb_link is already at $latest" >> out-latest
         fi
     fi
 done
