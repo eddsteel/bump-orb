@@ -2,12 +2,16 @@
 # CIRCLECI_CLI_TOKEN is required for the orb refresh to find private orbs.
 # CIRCLECI_CONFIG_FILE is required to specify the configuration file to use.
 
-GITHUB_OUTPUT=${GITHUB_OUTPUT-output}
-GITHUB_STEP_SUMMARY=${GITHUB_STEP_SUMMARY-steps.md}
+GITHUB_OUTPUT="${GITHUB_OUTPUT-output}"
+GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY-steps.md}"
 ORBS="./orbs"
 STANZA='/^orbs:/,/^[^ ][^ ]/' # stanza to match initial orbs section of the config
 
-trap "rm -fr ${ORBS}" 1 2 3 6
+on_exit() {
+  rm -fr "${ORBS}"
+}
+
+trap on_exit 1 2 3 6
 
 CONFIG="$1"
 if [ "$#" -gt 1 ]; then
@@ -19,75 +23,76 @@ if [ "$#" -gt 2 ]; then
     IGNORED_ORBS="$3"
 fi
 
-if ! grep -q '^orbs:' "$CONFIG"; then
-    echo "Orbs are not used." >> $GITHUB_STEP_SUMMARY
-    echo "summary=Orbs are not used." >> $GITHUB_OUTPUT
+if ! grep -q '^orbs:' "${CONFIG}"; then
+    echo "Orbs are not used." >> "${GITHUB_STEP_SUMMARY}"
+    echo "summary=Orbs are not used." >> "${GITHUB_OUTPUT}"
     exit 0
 fi
 
-NAMESPACES="$(sed -n "${STANZA}s!/!&!p" "$CONFIG" | cut -f2 -d: | cut -f1 -d/ | sort -u)"
+NAMESPACES="$(sed -n "${STANZA}s!/!&!p" "${CONFIG}" | cut -f2 -d: | cut -f1 -d/ | sort -u)"
 
 for ns in $NAMESPACES; do
-    circleci --skip-update-check orb list $ns --uncertified | sed -n 's/ (\([^)]*\))$/@\1/gp' \
+    circleci --skip-update-check orb list "${ns}" --uncertified | sed -n 's/ (\([^)]*\))$/@\1/gp' \
         | grep -v "Not published" >> $ORBS
-    if [ -z "$CIRCLECI_CLI_TOKEN" ]; then
-        echo "$ns: CIRCLECI_CLI_TOKEN must be set to retrieve private orbs"
+    if [ -z "${CIRCLECI_CLI_TOKEN}" ]; then
+        echo "${ns}: CIRCLECI_CLI_TOKEN must be set to retrieve private orbs"
         break
     else
-        circleci --skip-update-check orb list --uncertified --private "$ns" 2>/dev/null \
-            | sed -n 's/ (\([^)]*\))$/@\1/gp' | grep -v "Not published" >> $ORBS || \
-            echo "Failed to retrieve private orbs for $ns"
+        circleci --skip-update-check orb list --uncertified --private "${ns}" 2>/dev/null \
+            | sed -n 's/ (\([^)]*\))$/@\1/gp' | grep -v "Not published" >> "${ORBS}" || \
+            echo "Failed to retrieve private orbs for ${ns}"
     fi
 done
 
-if [ -n "$IGNORED_ORBS" ]; then
+if [ -n "${IGNORED_ORBS}" ]; then
     for orb in $IGNORED_ORBS; do
-        sed -i "\#^$orb@#d" "$ORBS"
+        sed -i "\#^${orb}@#d" "${ORBS}"
     done
 fi
 
 if [ ! -f "$ORBS" ]; then
     echo "Failed to retrieve any latest versions"
-    rm -fr "$ORBS"
+    rm -fr "${ORBS}"
     exit 1
 fi
 
-sed -n "${STANZA}{/^  *[^:]*: *[^ ]\+@[^ :]\+$/p}" "$CONFIG" \
+sed -n "${STANZA}{/^  *[^:]*: *[^ ]\+@[^ :]\+$/p}" "${CONFIG}" \
     | cut -f 2 -d ':' \
-    | while read line; do
-    orb=$(echo $line | cut -f 1 -d'@')
-    version=$(echo $line | cut -f 2 -d'@')
-    latest=$(grep "$orb" "$ORBS" | cut -f 2 -d'@')
+    | while read -r line; do
+    orb="$(echo "${line}" | cut -f 1 -d'@')"
+    version="$(echo "${line}" | cut -f 2 -d'@')"
+    latest="$(grep "${orb}" "${ORBS}" | cut -f 2 -d'@')"
 
-    if [ -n "$latest" ]; then
+    if [ -n "${latest}" ]; then
         orb_link="[\`${orb}\`](https://circleci.com/developer/orbs/orb/${orb})"
-        if [ "$version" != "$latest" ]; then
-            sed -i "${STANZA}s!${orb}@${version}!${orb}@${latest}!g" "$CONFIG"
-            echo "- bumped $orb_link to $latest (was $version)" >> out-updates
+        if [ "${version}" != "${latest}" ]; then
+            sed -i "${STANZA}s!${orb}@${version}!${orb}@${latest}!g" "${CONFIG}"
+            echo "- bumped ${orb_link} to ${latest} (was ${version})" >> out-updates
         else
-            echo "- $orb_link is already at $latest" >> out-latest
+            echo "- ${orb_link} is already at ${latest}" >> out-latest
         fi
     fi
 done
 
 
 if [ -s out-updates ]; then
-    echo "### Updates" >> $GITHUB_STEP_SUMMARY
-    cat out-updates >> $GITHUB_STEP_SUMMARY
+    echo "### Updates" >> "${GITHUB_STEP_SUMMARY}"
+    cat out-updates >> "${GITHUB_STEP_SUMMARY}"
 fi
 
 if [ -s out-latest ]; then
-    echo "### Already up to date" >> $GITHUB_STEP_SUMMARY
-    cat out-latest >> $GITHUB_STEP_SUMMARY
+    echo "### Already up to date" >> "${GITHUB_STEP_SUMMARY}"
+    cat out-latest >> "${GITHUB_STEP_SUMMARY}"
 fi
 
 if [ -s out-updates ]; then
-    EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-    echo "summary<<$EOF" >> $GITHUB_OUTPUT
-    cat out-updates >> $GITHUB_OUTPUT
-    echo "$EOF" >> $GITHUB_OUTPUT
+    EOF="$(dd if=/dev/urandom bs=15 count=1 status=none | base64)"
+    { echo "summary<<${EOF}"
+      cat out-updates
+      echo "${EOF}"
+    } >> "${GITHUB_OUTPUT}"
 else
-    echo "summary=No changes." >> $GITHUB_OUTPUT
+    echo "summary=No changes." >> "${GITHUB_OUTPUT}"
 fi
 
 rm -fr "$ORBS"
