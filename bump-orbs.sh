@@ -2,6 +2,10 @@
 # CIRCLECI_CLI_TOKEN is required for the orb refresh to find private orbs.
 # CIRCLECI_CONFIG_FILE is required to specify the configuration file to use.
 
+set -euo pipefail
+
+[[ -z "${DEBUG:-}" ]] || set -x
+
 GITHUB_OUTPUT="${GITHUB_OUTPUT-output}"
 GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY-steps.md}"
 ORBS="./orbs"
@@ -9,9 +13,11 @@ STANZA='/^orbs:/,/^[^[:space:]][^[:space:]]/' # stanza to match initial orbs sec
 
 on_exit() {
   rm -f "${ORBS}"
+  rm -f out-latest
+  rm -f out-updates
 }
 
-trap on_exit 1 2 3 6
+trap on_exit EXIT
 
 CONFIG="$1"
 
@@ -37,14 +43,17 @@ mapfile -t NAMESPACES < <( \
 )
 
 for ns in "${NAMESPACES[@]}"; do
-    circleci --skip-update-check orb list "${ns}" --uncertified | sed -n -e 's/ (\([^)]*\))$/@\1/gp' \
-        | grep -v "Not published" >> "${ORBS}"
-    if [ -z "${CIRCLECI_CLI_TOKEN}" ]; then
+    { circleci --skip-update-check orb list "${ns}" --uncertified | sed -n -e 's/ (\([^)]*\))$/@\1/gp' \
+        | sed -e '/Not published/d'
+    } >> "${ORBS}" || true
+    if [[ -z "${CIRCLECI_CLI_TOKEN:-}" ]]; then
         echo "${ns}: CIRCLECI_CLI_TOKEN must be set to retrieve private orbs" 1>&2
         break
     else
-        circleci --skip-update-check orb list --uncertified --private "${ns}" 2>/dev/null \
-            | sed -n -e 's/ (\([^)]*\))$/@\1/gp' | grep -v "Not published" >> "${ORBS}" || \
+      { circleci --skip-update-check orb list --uncertified --private "${ns}" 2>/dev/null \
+            | sed -n -e 's/ (\([^)]*\))$/@\1/gp' \
+            | sed -e '/Not published/d'
+      } >> "${ORBS}" || \
             echo "Failed to retrieve private orbs for ${ns}" 1>&2
     fi
 done
@@ -55,7 +64,6 @@ done
 
 if [ ! -f "${ORBS}" ]; then
     echo "Failed to retrieve any latest versions" 1>&2
-    rm -f "${ORBS}"
     exit 1
 fi
 
@@ -63,9 +71,9 @@ sed -n -E "${STANZA}{/^[[:space:]]*[^:]+[[:space:]]*:[[:space:]]*([^\/]+)\/([^@]
     | while read -r line; do
     orb="$(echo "${line}" | cut -f 1 -d'@')"
     version="$(echo "${line}" | cut -f 2 -d'@')"
-    latest="$(grep "${orb}" "${ORBS}" | cut -f 2 -d'@')"
+    latest="$(grep "${orb}" "${ORBS}" || true | cut -f 2 -d'@')"
 
-    if [ -n "${latest}" ]; then
+    if [ -n "${latest:-}" ]; then
         orb_link="[\`${orb}\`](https://circleci.com/developer/orbs/orb/${orb})"
         if [ "${version}" != "${latest}" ]; then
             sed -i '' -e "${STANZA}s!${orb}@${version}!${orb}@${latest}!g" "${CONFIG}"
@@ -96,7 +104,3 @@ if [ -s out-updates ]; then
 else
     echo "summary=No changes." >> "${GITHUB_OUTPUT}"
 fi
-
-rm -f "${ORBS}"
-rm -f out-latest
-rm -f out-updates
