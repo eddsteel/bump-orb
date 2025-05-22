@@ -5,10 +5,10 @@
 GITHUB_OUTPUT="${GITHUB_OUTPUT-output}"
 GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY-steps.md}"
 ORBS="./orbs"
-STANZA='/^orbs:/,/^[^ ][^ ]/' # stanza to match initial orbs section of the config
+STANZA='/^orbs:/,/^[^[:space:]][^[:space:]]/' # stanza to match initial orbs section of the config
 
 on_exit() {
-  rm -fr "${ORBS}"
+  rm -f "${ORBS}"
 }
 
 trap on_exit 1 2 3 6
@@ -29,35 +29,36 @@ if ! grep -q '^orbs:' "${CONFIG}"; then
     exit 0
 fi
 
-NAMESPACES="$(sed -n "${STANZA}s!/!&!p" "${CONFIG}" | cut -f2 -d: | cut -f1 -d/ | sort -u)"
+mapfile -t NAMESPACES < <( \
+  sed -n -E "${STANZA}{/^[[:space:]]*[^:]+[[:space:]]*:[[:space:]]*([^\/]+)\/([^@]+)@([^[:space:]:]+)[[:space:]]*\$/s//\1/p;}" "${CONFIG}" | sort -u \
+)
 
-for ns in $NAMESPACES; do
-    circleci --skip-update-check orb list "${ns}" --uncertified | sed -n 's/ (\([^)]*\))$/@\1/gp' \
-        | grep -v "Not published" >> $ORBS
+for ns in "${NAMESPACES[@]}"; do
+    circleci --skip-update-check orb list "${ns}" --uncertified | sed -n -e 's/ (\([^)]*\))$/@\1/gp' \
+        | grep -v "Not published" >> "${ORBS}"
     if [ -z "${CIRCLECI_CLI_TOKEN}" ]; then
-        echo "${ns}: CIRCLECI_CLI_TOKEN must be set to retrieve private orbs"
+        echo "${ns}: CIRCLECI_CLI_TOKEN must be set to retrieve private orbs" 1>&2
         break
     else
         circleci --skip-update-check orb list --uncertified --private "${ns}" 2>/dev/null \
-            | sed -n 's/ (\([^)]*\))$/@\1/gp' | grep -v "Not published" >> "${ORBS}" || \
-            echo "Failed to retrieve private orbs for ${ns}"
+            | sed -n -e 's/ (\([^)]*\))$/@\1/gp' | grep -v "Not published" >> "${ORBS}" || \
+            echo "Failed to retrieve private orbs for ${ns}" 1>&2
     fi
 done
 
 if [ -n "${IGNORED_ORBS}" ]; then
     for orb in $IGNORED_ORBS; do
-        sed -i "\#^${orb}@#d" "${ORBS}"
+        sed -i '' -e "\#^${orb}@#d" "${ORBS}"
     done
 fi
 
-if [ ! -f "$ORBS" ]; then
-    echo "Failed to retrieve any latest versions"
-    rm -fr "${ORBS}"
+if [ ! -f "${ORBS}" ]; then
+    echo "Failed to retrieve any latest versions" 1>&2
+    rm -f "${ORBS}"
     exit 1
 fi
 
-sed -n "${STANZA}{/^  *[^:]*: *[^ ]\+@[^ :]\+$/p}" "${CONFIG}" \
-    | cut -f 2 -d ':' \
+sed -n -E "${STANZA}{/^[[:space:]]*[^:]+[[:space:]]*:[[:space:]]*([^\/]+)\/([^@]+)@([^[:space:]:]+)[[:space:]]*\$/s//\1\/\2@\3/p;}" "${CONFIG}" \
     | while read -r line; do
     orb="$(echo "${line}" | cut -f 1 -d'@')"
     version="$(echo "${line}" | cut -f 2 -d'@')"
@@ -66,7 +67,7 @@ sed -n "${STANZA}{/^  *[^:]*: *[^ ]\+@[^ :]\+$/p}" "${CONFIG}" \
     if [ -n "${latest}" ]; then
         orb_link="[\`${orb}\`](https://circleci.com/developer/orbs/orb/${orb})"
         if [ "${version}" != "${latest}" ]; then
-            sed -i "${STANZA}s!${orb}@${version}!${orb}@${latest}!g" "${CONFIG}"
+            sed -i '' -e "${STANZA}s!${orb}@${version}!${orb}@${latest}!g" "${CONFIG}"
             echo "- bumped ${orb_link} to ${latest} (was ${version})" >> out-updates
         else
             echo "- ${orb_link} is already at ${latest}" >> out-latest
@@ -95,6 +96,6 @@ else
     echo "summary=No changes." >> "${GITHUB_OUTPUT}"
 fi
 
-rm -fr "$ORBS"
-rm -fr out-latest
-rm -fr out-updates
+rm -f "${ORBS}"
+rm -f out-latest
+rm -f out-updates
