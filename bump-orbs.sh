@@ -6,17 +6,16 @@ set -euo pipefail
 
 [[ -z "${DEBUG:-}" ]] || set -x
 
+TMPDIR="$(mktemp -d)"
 GITHUB_OUTPUT="${GITHUB_OUTPUT-output}"
 GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY-steps.md}"
-ORBS="$(mktemp "orbs.XXXXXXXX")"
-OUT_LATEST="$(mktemp "out-latest.XXXXXXXX")"
-OUT_UPDATES="$(mktemp "out-updates.XXXXXXXX")"
+ORBS="$(mktemp "${TMPDIR}/orbs.XXXXXXXX")"
+OUT_LATEST="$(mktemp "${TMPDIR}/out-latest.XXXXXXXX")"
+OUT_UPDATES="$(mktemp "${TMPDIR}/out-updates.XXXXXXXX")"
 STANZA='/^orbs:/,/^[^[:space:]][^[:space:]]/' # stanza to match initial orbs section of the config
 
 on_exit() {
-  rm -f "${ORBS}"
-  rm -f "${OUT_LATEST}"
-  rm -f "${OUT_UPDATES}"
+  rm -fr "${TMPDIR}"
 }
 
 trap on_exit EXIT
@@ -61,7 +60,7 @@ for ns in "${NAMESPACES[@]}"; do
 done
 
 for orb in "${IGNORED_ORBS[@]}"; do
-    sed -i '' -e "\#^${orb}@#d" "${ORBS}"
+    sed -i.orig -e "\#^${orb}@#d" "${ORBS}"
 done
 
 if [ ! -f "${ORBS}" ]; then
@@ -78,7 +77,7 @@ sed -n -E "${STANZA}{/^[[:space:]]*[^:]+[[:space:]]*:[[:space:]]*([^\/]+)\/([^@]
     if [ -n "${latest:-}" ]; then
         orb_link="[\`${orb}\`](https://circleci.com/developer/orbs/orb/${orb})"
         if [ "${version}" != "${latest}" ]; then
-            sed -i '' -e "${STANZA}s!${orb}@${version}!${orb}@${latest}!g" "${CONFIG}"
+            sed -i.orig -e "${STANZA}s!${orb}@${version}!${orb}@${latest}!g" "${CONFIG}"
             echo "- bumped ${orb_link} to ${latest} (was ${version})" >> "${OUT_UPDATES}"
         else
             echo "- ${orb_link} is already at ${latest}" >> "${OUT_LATEST}"
