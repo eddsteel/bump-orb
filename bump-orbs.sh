@@ -14,14 +14,17 @@ on_exit() {
 trap on_exit 1 2 3 6
 
 CONFIG="$1"
-if [ "$#" -gt 1 ]; then
-    export CIRCLECI_CLI_TOKEN="$2"
-fi
 
-IGNORED_ORBS=""
-if [ "$#" -gt 2 ]; then
-    IGNORED_ORBS="$3"
-fi
+# Use 2nd argument as CIRCLECI_CLI_TOKEN if provided, otherwise use the environment variable if available
+export CIRCLECI_CLI_TOKEN="${2:-${CIRCLECI_CLI_TOKEN:-}}"
+
+# Use 3rd argument as IGNORED_ORBS if provided, it is a white space (newline and/or space) separated list of orbs
+IGNORED_ORBS=()
+mapfile -t ignored_orbs_lines <<< "${3:-}"
+for ignored_orbs_line in "${ignored_orbs_lines[@]}"; do
+  IFS=" " read -r -a _ignored_orbs <<< "${ignored_orbs_line:-}"
+  IGNORED_ORBS+=("${_ignored_orbs[@]}")
+done
 
 if ! grep -q '^orbs:' "${CONFIG}"; then
     echo "Orbs are not used." >> "${GITHUB_STEP_SUMMARY}"
@@ -46,11 +49,9 @@ for ns in "${NAMESPACES[@]}"; do
     fi
 done
 
-if [ -n "${IGNORED_ORBS}" ]; then
-    for orb in $IGNORED_ORBS; do
-        sed -i '' -e "\#^${orb}@#d" "${ORBS}"
-    done
-fi
+for orb in "${IGNORED_ORBS[@]}"; do
+    sed -i '' -e "\#^${orb}@#d" "${ORBS}"
+done
 
 if [ ! -f "${ORBS}" ]; then
     echo "Failed to retrieve any latest versions" 1>&2
