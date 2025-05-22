@@ -6,16 +6,17 @@ set -euo pipefail
 
 [[ -z "${DEBUG:-}" ]] || set -x
 
-RUNNER_TEMP="${RUNNER_TEMP:-/tmp}"
 GITHUB_OUTPUT="${GITHUB_OUTPUT-output}"
 GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY-steps.md}"
-ORBS="$(mktemp "${RUNNER_TEMP}/orbs.XXXXXXXX")"
+ORBS="$(mktemp "orbs.XXXXXXXX")"
+OUT_LATEST="$(mktemp "out-latest.XXXXXXXX")"
+OUT_UPDATES="$(mktemp "out-updates.XXXXXXXX")"
 STANZA='/^orbs:/,/^[^[:space:]][^[:space:]]/' # stanza to match initial orbs section of the config
 
 on_exit() {
   rm -f "${ORBS}"
-  rm -f "${RUNNER_TEMP}/out-latest"
-  rm -f "${RUNNER_TEMP}/out-updates"
+  rm -f "${OUT_LATEST}"
+  rm -f "${OUT_UPDATES}"
 }
 
 trap on_exit EXIT
@@ -78,28 +79,28 @@ sed -n -E "${STANZA}{/^[[:space:]]*[^:]+[[:space:]]*:[[:space:]]*([^\/]+)\/([^@]
         orb_link="[\`${orb}\`](https://circleci.com/developer/orbs/orb/${orb})"
         if [ "${version}" != "${latest}" ]; then
             sed -i '' -e "${STANZA}s!${orb}@${version}!${orb}@${latest}!g" "${CONFIG}"
-            echo "- bumped ${orb_link} to ${latest} (was ${version})" >> "${RUNNER_TEMP}/out-updates"
+            echo "- bumped ${orb_link} to ${latest} (was ${version})" >> "${OUT_UPDATES}"
         else
-            echo "- ${orb_link} is already at ${latest}" >> "${RUNNER_TEMP}/out-latest"
+            echo "- ${orb_link} is already at ${latest}" >> "${OUT_LATEST}"
         fi
     fi
 done
 
 
-if [ -s "${RUNNER_TEMP}/out-updates" ]; then
+if [ -s "${OUT_UPDATES}" ]; then
     echo "### Updates" >> "${GITHUB_STEP_SUMMARY}"
-    cat "${RUNNER_TEMP}/out-updates" >> "${GITHUB_STEP_SUMMARY}"
+    cat "${OUT_UPDATES}" >> "${GITHUB_STEP_SUMMARY}"
 fi
 
-if [ -s "${RUNNER_TEMP}/out-latest" ]; then
+if [ -s "${OUT_LATEST}" ]; then
     echo "### Already up to date" >> "${GITHUB_STEP_SUMMARY}"
-    cat "${RUNNER_TEMP}/out-latest" >> "${GITHUB_STEP_SUMMARY}"
+    cat "${OUT_LATEST}" >> "${GITHUB_STEP_SUMMARY}"
 fi
 
-if [ -s "${RUNNER_TEMP}/out-updates" ]; then
+if [ -s "${OUT_UPDATES}" ]; then
     EOF="$(dd if=/dev/urandom bs=15 count=1 status=none | base64)"
     { echo "summary<<${EOF}"
-      cat "${RUNNER_TEMP}/out-updates"
+      cat "${OUT_UPDATES}"
       echo "${EOF}"
     } >> "${GITHUB_OUTPUT}"
 else
