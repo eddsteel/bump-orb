@@ -78,6 +78,7 @@ sed -n -E "${STANZA}{/^[[:space:]]*[^:]+[[:space:]]*:[[:space:]]*([^\/]+)\/([^@]
         orb_link="[\`${orb}\`](https://circleci.com/developer/orbs/orb/${orb})"
         if [ "${version}" != "${latest}" ]; then
             sed -i.orig -e "${STANZA}s!${orb}@${version}!${orb}@${latest}!g" "${CONFIG}"
+            rm -f "${CONFIG}.orig"
             echo "- bumped ${orb_link} to ${latest} (was ${version})" >> "${OUT_UPDATES}"
         else
             echo "- ${orb_link} is already at ${latest}" >> "${OUT_LATEST}"
