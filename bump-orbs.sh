@@ -72,7 +72,7 @@ sed -n -E "${STANZA}{/^[[:space:]]*[^:]+[[:space:]]*:[[:space:]]*([^\/]+)\/([^@]
     | while read -r line; do
     orb="$(echo "${line}" | cut -f 1 -d'@')"
     version="$(echo "${line}" | cut -f 2 -d'@')"
-    latest="$(grep "${orb}" "${ORBS}" || true | cut -f 2 -d'@')"
+    latest="$({ grep "${orb}" "${ORBS}" || true; } | cut -f 2 -d'@')"
 
     if [ -n "${latest:-}" ]; then
         orb_link="[\`${orb}\`](https://circleci.com/developer/orbs/orb/${orb})"
